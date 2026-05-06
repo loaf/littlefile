@@ -1,0 +1,42 @@
+:root, [data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #fafafa;
+  --bg-tertiary: #f0f0f0;
+  --border-color: #f0f0f0;
+  --text-primary: #000000;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --highlight-bg: #e6f4ff;
+  --highlight-text: #1677ff;
+  --danger-color: #ff4d4f;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-tertiary: #0f3460;
+  --border-color: #2a2a4a;
+  --text-primary: #e0e0e0;
+  --text-secondary: #999999;
+  --text-tertiary: #666666;
+  --highlight-bg: #1a3a5c;
+  --highlight-text: #4da6ff;
+  --danger-color: #ff6b6b;
+}
+
+[data-theme="dark"] .ant-typography { color: var(--text-primary); }
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}

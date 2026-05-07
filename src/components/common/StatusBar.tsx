@@ -3,8 +3,10 @@ import { Space, Divider, Typography } from 'antd';
 const { Text } = Typography;
 
 interface StatusBarProps {
+  libraryName: string;
+  libraryPath: string;
+  appVersion: string;
   totalFiles: number;
-  selectedCount: number;
   totalSize: number;
   totalCompressedSize: number;
 }
@@ -16,7 +18,7 @@ function formatBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
-export default function StatusBar({ totalFiles, selectedCount, totalSize, totalCompressedSize }: StatusBarProps) {
+export default function StatusBar({ libraryName, libraryPath, appVersion, totalFiles, totalSize, totalCompressedSize }: StatusBarProps) {
   const compressionRate = totalSize > 0
     ? Math.round((1 - totalCompressedSize / totalSize) * 100)
     : 0;
@@ -26,26 +28,30 @@ export default function StatusBar({ totalFiles, selectedCount, totalSize, totalC
       style={{
         borderTop: '1px solid var(--border-color)',
         background: 'var(--bg-secondary)',
-        padding: '8px 16px',
-        fontSize: 13,
+        padding: '6px 16px',
+        fontSize: 12,
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        flexShrink: 0,
       }}
     >
-      <Space split={<Divider type="vertical" />} size={4}>
-        <Text type="secondary">
-          共 {totalFiles} 个文件
+      <Space split={<Divider type="vertical" />} size={8}>
+        <Text strong style={{ fontSize: 12 }}>{libraryName}</Text>
+        <Text type="secondary" style={{ fontSize: 11, maxWidth: 360 }} ellipsis>{libraryPath}</Text>
+      </Space>
+      <Space split={<Divider type="vertical" />} size={8}>
+        <Text type="secondary" style={{ fontSize: 11 }}>
+          {totalFiles} 个文件
         </Text>
-        {selectedCount > 0 && (
-          <Text type="secondary">
-            已选 {selectedCount} 个
-          </Text>
-        )}
         {totalSize > 0 && (
-          <Text type="secondary">
-            压缩率 {compressionRate}% | {formatBytes(totalSize)} / {formatBytes(totalCompressedSize)}
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            {formatBytes(totalSize)} / {formatBytes(totalCompressedSize)} ({compressionRate}%)
           </Text>
         )}
+        <Text type="secondary" style={{ fontSize: 11 }}>
+          v{appVersion}
+        </Text>
       </Space>
     </div>
   );

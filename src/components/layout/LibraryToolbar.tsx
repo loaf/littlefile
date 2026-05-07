@@ -74,7 +74,11 @@ export default function LibraryToolbar({ libraryName, hasLibrary, onOpenLibrary,
       </Space>
       <Space>
         {history.length > 0 && (
-          <Dropdown menu={{ items: history.map(e => ({ key: e.path, label: e.name, onClick: () => handleOpenFromHistory(e) })) }} trigger={['click']}>
+          <Dropdown menu={{ items: history.map(e => ({
+            key: e.path,
+            label: e.name || e.path.split('\\').pop()?.split('/').pop()?.replace('.db', '') || e.path,
+            onClick: () => handleOpenFromHistory(e),
+          })) }} trigger={['click']}>
             <Button size="small" icon={<HistoryOutlined />}>最近打开</Button>
           </Dropdown>
         )}

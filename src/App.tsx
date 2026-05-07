@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ConfigProvider, theme as antTheme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import { invoke } from '@tauri-apps/api/core';
 import { useTheme } from './hooks/useTheme';
 import { useLibrary } from './hooks/useLibrary';
+import { useSettings } from './hooks/useSettings';
 import LibraryToolbar from './components/layout/LibraryToolbar';
 import Sidebar from './components/layout/Sidebar';
 import LibraryList from './components/library/LibraryList';
@@ -14,17 +16,55 @@ import './App.css';
 function App() {
   const { theme: currentTheme } = useTheme();
   const { libraryInfo, openLibrary, closeLibrary } = useLibrary();
+  const { settings, updateSettings } = useSettings();
 
   const [viewingFileId, setViewingFileId] = useState<number | null>(null);
   const [filter, setFilter] = useState<any>({});
   const [showImport, setShowImport] = useState(false);
-  const [currentLibPath, setCurrentLibPath] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [appVersion, setAppVersion] = useState('');
+
+  useEffect(() => {
+    invoke<string>('get_app_version').then(setAppVersion).catch(() => {});
+  }, []);
+
+  // Auto-open last library on mount
+  useEffect(() => {
+    if (settings.defaultLibraryPath && !libraryInfo) {
+      openLibrary(settings.defaultLibraryPath).catch(() => {
+        updateSettings({ defaultLibraryPath: '' });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleOpenLibrary = useCallback(async (path: string) => {
+    await openLibrary(path);
+    updateSettings({ defaultLibraryPath: path });
+    setRefreshKey(k => k + 1);
+  }, [openLibrary, updateSettings]);
+
+  const handleImportComplete = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
+
+  const handleCloseLibrary = useCallback(() => {
+    closeLibrary();
+    updateSettings({ defaultLibraryPath: '' });
+    setViewingFileId(null);
+  }, [closeLibrary, updateSettings]);
+
+  const themeConfig = {
+    algorithm: currentTheme === 'dark' ? antTheme.darkAlgorithm : undefined,
+  };
+  const getPopupContainer = () => document.getElementById('root') || document.body;
 
   if (viewingFileId !== null) {
     return (
       <ConfigProvider
         locale={zhCN}
-        theme={{ algorithm: currentTheme === 'dark' ? antTheme.darkAlgorithm : undefined }}
+        theme={themeConfig}
+        getPopupContainer={getPopupContainer}
       >
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
           <FileViewer fileId={viewingFileId} onClose={() => setViewingFileId(null)} />
@@ -38,14 +78,15 @@ function App() {
   return (
     <ConfigProvider
       locale={zhCN}
-      theme={{ algorithm: currentTheme === 'dark' ? antTheme.darkAlgorithm : undefined }}
+      theme={themeConfig}
+      getPopupContainer={getPopupContainer}
     >
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
         <LibraryToolbar
           libraryName={libraryInfo?.name || ''}
           hasLibrary={hasLibrary}
-          onOpenLibrary={(path) => { setCurrentLibPath(path); openLibrary(path).catch(() => {}); }}
-          onCloseLibrary={() => { closeLibrary(); setViewingFileId(null); setCurrentLibPath(''); }}
+          onOpenLibrary={handleOpenLibrary}
+          onCloseLibrary={handleCloseLibrary}
           onImportClick={() => setShowImport(true)}
         />
 
@@ -55,10 +96,12 @@ function App() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             {hasLibrary ? (
               <>
-                <LibraryList />
+                <LibraryList key={refreshKey} filter={filter} onOpenFile={(id) => setViewingFileId(id)} />
                 <StatusBar
+                  libraryName={libraryInfo.name}
+                  libraryPath={libraryInfo.path}
+                  appVersion={appVersion}
                   totalFiles={libraryInfo.total_files}
-                  selectedCount={0}
                   totalSize={libraryInfo.total_size}
                   totalCompressedSize={libraryInfo.total_compressed_size}
                 />
@@ -80,7 +123,7 @@ function App() {
       </div>
 
       <ImportDialog open={showImport} onClose={() => setShowImport(false)}
-        onComplete={() => { if (currentLibPath) openLibrary(currentLibPath).catch(() => {}); }} />
+        onComplete={handleImportComplete} />
     </ConfigProvider>
   );
 }

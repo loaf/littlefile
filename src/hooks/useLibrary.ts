@@ -5,6 +5,7 @@ export interface LibraryInfo {
   name: string; description: string; total_files: number;
   total_size: number; total_compressed_size: number;
   total_tags: number; db_file_size: number; created_at: string;
+  path: string;
 }
 
 export function useLibrary() {

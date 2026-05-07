@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { message } from 'antd';
 
 export interface FileFilter {
   filenameQuery?: string;
@@ -53,7 +54,7 @@ interface UseFilesReturn {
   selectRange: (toId: number) => void;
   selectAll: () => void;
   clearSelection: () => void;
-  fetchFiles: (offset: number, limit: number) => Promise<FileListResult>;
+  fetchFiles: (offset: number, limit: number, overrideFilter?: FileFilter) => Promise<FileListResult>;
 }
 
 export function useFiles(): UseFilesReturn {
@@ -66,16 +67,22 @@ export function useFiles(): UseFilesReturn {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [lastClickedId, setLastClickedId] = useState<number | null>(null);
 
-  const fetchFiles = useCallback(async (offset: number, limit: number): Promise<FileListResult> => {
+  // Keep a ref in sync with filter state during render so fetchFiles always reads the latest value
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
+
+  const fetchFiles = useCallback(async (offset: number, limit: number, overrideFilter?: FileFilter): Promise<FileListResult> => {
     setLoading(true);
     try {
+      const activeFilter = overrideFilter ?? filterRef.current;
       const result = await invoke<FileListResult>('list_files', {
-        filter,
+        filter: activeFilter,
         offset,
         limit,
-        sortBy,
-        sortOrder,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
       });
+      console.log('list_files result:', result.total_count, 'files');
       if (offset === 0) {
         setFiles(result.files);
       } else {
@@ -83,10 +90,14 @@ export function useFiles(): UseFilesReturn {
       }
       setTotalCount(result.total_count);
       return result;
+    } catch (e) {
+      console.error('list_files failed:', e);
+      message.error('加载文件列表失败: ' + String(e));
+      return { total_count: 0, files: [] };
     } finally {
       setLoading(false);
     }
-  }, [filter, sortBy, sortOrder]);
+  }, [sortBy, sortOrder]);
 
   const toggleSortOrder = useCallback(() => {
     setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));

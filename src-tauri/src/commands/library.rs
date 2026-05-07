@@ -14,6 +14,7 @@ pub struct LibraryInfo {
     pub total_tags: i64,
     pub db_file_size: i64,
     pub created_at: String,
+    pub path: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,6 +152,15 @@ fn get_library_info_inner(conn: &rusqlite::Connection, path: &str) -> Result<Lib
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )
     .map_err(|e| format!("{e}"))?;
+    let name = if name.is_empty() && !path.is_empty() {
+        // Derive display name from filename when db_meta name is empty
+        std::path::Path::new(path)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default()
+    } else {
+        name
+    };
     let (total_files, total_size, total_compressed_size): (i64, i64, i64) = conn.query_row(
         "SELECT COUNT(*), COALESCE(SUM(size),0), COALESCE(SUM(compressed_size),0) FROM files",
         [],
@@ -174,5 +184,6 @@ fn get_library_info_inner(conn: &rusqlite::Connection, path: &str) -> Result<Lib
         total_tags,
         db_file_size,
         created_at,
+        path: path.to_string(),
     })
 }

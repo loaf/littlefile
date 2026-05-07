@@ -166,7 +166,7 @@ pub fn list_files(
          LEFT JOIN tags t ON ft.tag_id = t.id \
          WHERE {} \
          GROUP BY f.id \
-         ORDER BY {} {} \
+          ORDER BY f.{} {} \
          LIMIT ? OFFSET ?",
         where_clause, sort_by, sort_dir
     );

@@ -3,6 +3,7 @@ use rusqlite::types::Value;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FileFilter {
     pub filename_query: Option<String>,
     pub author_query: Option<String>,
@@ -225,4 +226,41 @@ pub fn delete_files(file_ids: Vec<i64>, state: tauri::State<'_, crate::AppState>
     let params: Vec<rusqlite::types::Value> = file_ids.iter().map(|&id| rusqlite::types::Value::Integer(id)).collect();
     conn.execute(&sql, rusqlite::params_from_iter(params.iter())).map_err(|e| format!("{e}"))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::FileFilter;
+
+    #[test]
+    fn file_filter_deserialize_camel_case() {
+        let json = r#"{
+            "filenameQuery": "foo",
+            "authorQuery": "bar",
+            "descriptionQuery": "baz",
+            "tagIds": [1, 2],
+            "tagFilterMode": "AND",
+            "sizeMin": 10,
+            "sizeMax": 20,
+            "dateFrom": "2026-01-01",
+            "dateTo": "2026-01-31",
+            "encodingFilter": "utf-8",
+            "hasDescription": true,
+            "hasTags": false
+        }"#;
+
+        let filter: FileFilter = serde_json::from_str(json).unwrap();
+        assert_eq!(filter.filename_query.as_deref(), Some("foo"));
+        assert_eq!(filter.author_query.as_deref(), Some("bar"));
+        assert_eq!(filter.description_query.as_deref(), Some("baz"));
+        assert_eq!(filter.tag_ids.as_deref(), Some(&vec![1, 2]));
+        assert_eq!(filter.tag_filter_mode.as_deref(), Some("AND"));
+        assert_eq!(filter.size_min, Some(10));
+        assert_eq!(filter.size_max, Some(20));
+        assert_eq!(filter.date_from.as_deref(), Some("2026-01-01"));
+        assert_eq!(filter.date_to.as_deref(), Some("2026-01-31"));
+        assert_eq!(filter.encoding_filter.as_deref(), Some("utf-8"));
+        assert_eq!(filter.has_description, Some(true));
+        assert_eq!(filter.has_tags, Some(false));
+    }
 }

@@ -6,6 +6,7 @@ interface StatusBarProps {
   libraryName: string;
   libraryPath: string;
   appVersion: string;
+  currentFiles?: number;
   totalFiles: number;
   totalSize: number;
   totalCompressedSize: number;
@@ -18,10 +19,14 @@ function formatBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
-export default function StatusBar({ libraryName, libraryPath, appVersion, totalFiles, totalSize, totalCompressedSize }: StatusBarProps) {
+export default function StatusBar({ libraryName, libraryPath, appVersion, currentFiles, totalFiles, totalSize, totalCompressedSize }: StatusBarProps) {
   const compressionRate = totalSize > 0
     ? Math.round((1 - totalCompressedSize / totalSize) * 100)
     : 0;
+
+  const displayFiles = typeof currentFiles === 'number'
+    ? (currentFiles === totalFiles ? `${totalFiles} 个文件` : `${currentFiles} / ${totalFiles} 个文件`)
+    : `${totalFiles} 个文件`;
 
   return (
     <div
@@ -42,7 +47,7 @@ export default function StatusBar({ libraryName, libraryPath, appVersion, totalF
       </Space>
       <Space split={<Divider type="vertical" />} size={8}>
         <Text type="secondary" style={{ fontSize: 11 }}>
-          {totalFiles} 个文件
+          {displayFiles}
         </Text>
         {totalSize > 0 && (
           <Text type="secondary" style={{ fontSize: 11 }}>

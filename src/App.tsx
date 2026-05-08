@@ -15,7 +15,7 @@ import './App.css';
 
 function App() {
   const { theme: currentTheme } = useTheme();
-  const { libraryInfo, openLibrary, closeLibrary } = useLibrary();
+  const { libraryInfo, openLibrary, closeLibrary, refreshInfo } = useLibrary();
   const { settings, updateSettings } = useSettings();
 
   const [viewingFileId, setViewingFileId] = useState<number | null>(null);
@@ -23,6 +23,7 @@ function App() {
   const [showImport, setShowImport] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [appVersion, setAppVersion] = useState('');
+  const [filteredTotalCount, setFilteredTotalCount] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     invoke<string>('get_app_version').then(setAppVersion).catch(() => {});
@@ -42,16 +43,19 @@ function App() {
     await openLibrary(path);
     updateSettings({ defaultLibraryPath: path });
     setRefreshKey(k => k + 1);
+    setFilteredTotalCount(undefined);
   }, [openLibrary, updateSettings]);
 
   const handleImportComplete = useCallback(() => {
     setRefreshKey(k => k + 1);
-  }, []);
+    refreshInfo().catch(() => {});
+  }, [refreshInfo]);
 
   const handleCloseLibrary = useCallback(() => {
     closeLibrary();
     updateSettings({ defaultLibraryPath: '' });
     setViewingFileId(null);
+    setFilteredTotalCount(undefined);
   }, [closeLibrary, updateSettings]);
 
   const themeConfig = {
@@ -96,11 +100,18 @@ function App() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             {hasLibrary ? (
               <>
-                <LibraryList key={refreshKey} filter={filter} onOpenFile={(id) => setViewingFileId(id)} />
+                <LibraryList
+                  key={refreshKey}
+                  filter={filter}
+                  onOpenFile={(id) => setViewingFileId(id)}
+                  onTotalCountChange={setFilteredTotalCount}
+                  onMutateDone={() => refreshInfo().catch(() => {})}
+                />
                 <StatusBar
                   libraryName={libraryInfo.name}
                   libraryPath={libraryInfo.path}
                   appVersion={appVersion}
+                  currentFiles={filteredTotalCount}
                   totalFiles={libraryInfo.total_files}
                   totalSize={libraryInfo.total_size}
                   totalCompressedSize={libraryInfo.total_compressed_size}

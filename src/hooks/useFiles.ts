@@ -81,6 +81,7 @@ export function useFiles(): UseFilesReturn {
         limit,
         sortBy: sortBy,
         sortOrder: sortOrder,
+        includeTotal: offset === 0,
       });
       console.log('list_files result:', result.total_count, 'files');
       if (offset === 0) {
@@ -88,7 +89,9 @@ export function useFiles(): UseFilesReturn {
       } else {
         setFiles(prev => [...prev, ...result.files]);
       }
-      setTotalCount(result.total_count);
+      if (result.total_count >= 0) {
+        setTotalCount(result.total_count);
+      }
       return result;
     } catch (e) {
       console.error('list_files failed:', e);

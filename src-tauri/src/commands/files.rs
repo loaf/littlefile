@@ -49,6 +49,7 @@ pub fn list_files(
     limit: i64,
     sort_by: String,
     sort_order: String,
+    include_total: Option<bool>,
     state: tauri::State<'_, crate::AppState>,
 ) -> Result<FileListResult, String> {
     let valid_sort_columns = ["filename", "author", "size", "created_at"];
@@ -142,19 +143,19 @@ pub fn list_files(
 
     let where_clause = conditions.join(" AND ");
 
-    let count_sql = format!(
-        "SELECT COUNT(DISTINCT f.id) FROM files f \
-         LEFT JOIN file_tags ft ON f.id = ft.file_id \
-         LEFT JOIN tags t ON ft.tag_id = t.id \
-         WHERE {}",
-        where_clause
-    );
-
-    let total_count: i64 = conn
-        .query_row(&count_sql, params_from_iter(params.iter()), |row| {
-            row.get(0)
-        })
-        .map_err(|e| format!("Failed to count files: {e}"))?;
+    let total_count: i64 = if include_total.unwrap_or(true) {
+        let count_sql = format!(
+            "SELECT COUNT(DISTINCT f.id) FROM files f \
+             LEFT JOIN file_tags ft ON f.id = ft.file_id \
+             LEFT JOIN tags t ON ft.tag_id = t.id \
+             WHERE {}",
+            where_clause
+        );
+        conn.query_row(&count_sql, params_from_iter(params.iter()), |row| row.get(0))
+            .map_err(|e| format!("Failed to count files: {e}"))?
+    } else {
+        -1
+    };
 
     let data_sql = format!(
         "SELECT DISTINCT f.id, f.filename, f.author, f.size, f.compressed_size, \
@@ -253,7 +254,7 @@ mod tests {
         assert_eq!(filter.filename_query.as_deref(), Some("foo"));
         assert_eq!(filter.author_query.as_deref(), Some("bar"));
         assert_eq!(filter.description_query.as_deref(), Some("baz"));
-        assert_eq!(filter.tag_ids.as_deref(), Some(&vec![1, 2]));
+        assert_eq!(filter.tag_ids, Some(vec![1, 2]));
         assert_eq!(filter.tag_filter_mode.as_deref(), Some("AND"));
         assert_eq!(filter.size_min, Some(10));
         assert_eq!(filter.size_max, Some(20));

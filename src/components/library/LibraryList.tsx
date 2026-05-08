@@ -32,21 +32,33 @@ const INITIAL_COLUMNS: ColumnDef[] = [
   { key: 'created_at', label: '导入时间', width: 140, sortable: true, render: (item) => <Text type="secondary">{item.created_at?.slice(0, 10) || '-'}</Text> },
 ];
 
-export default function LibraryList({ onOpenFile, filter }: { onOpenFile?: (id: number) => void; filter: FileFilter }) {
+interface LibraryListProps {
+  onOpenFile?: (id: number) => void;
+  filter: FileFilter;
+  onTotalCountChange?: (count: number) => void;
+  onMutateDone?: () => void;
+}
+
+export default function LibraryList({ onOpenFile, filter, onTotalCountChange, onMutateDone }: LibraryListProps) {
   const {
     files, totalCount, loading, sortBy, sortOrder, selectedIds,
     setSortBy, toggleSortOrder, toggleSelect, selectRange,
     clearSelection, fetchFiles,
   } = useFiles();
 
-  useEffect(() => {
-    setLoadedOffset(0);
-    fetchFiles(0, PAGE_SIZE, filter).then(() => setLoadedOffset(PAGE_SIZE));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
-
   const parentRef = useRef<HTMLDivElement>(null);
   const [loadedOffset, setLoadedOffset] = useState(0);
+
+  useEffect(() => {
+    onTotalCountChange?.(totalCount);
+  }, [totalCount, onTotalCountChange]);
+
+  useEffect(() => {
+    parentRef.current?.scrollTo({ top: 0 });
+    setLoadedOffset(0);
+    clearSelection();
+    fetchFiles(0, PAGE_SIZE, filter).then(() => setLoadedOffset(PAGE_SIZE));
+  }, [filter, fetchFiles, clearSelection]);
 
   const handleLoadMore = () => {
     if (files.length < totalCount && !loading) {
@@ -163,13 +175,22 @@ export default function LibraryList({ onOpenFile, filter }: { onOpenFile?: (id: 
         const ids = [...selectedIds];
         Modal.confirm({
           title: '确认删除', content: `确定要删除选中的 ${ids.length} 个文件吗？`, okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
-          onOk: async () => { try { await invoke('delete_files', { fileIds: ids }); clearSelection(); fetchFiles(0, PAGE_SIZE); } catch (e) { message.error(String(e)); } },
+          onOk: async () => {
+            try {
+              await invoke('delete_files', { fileIds: ids });
+              clearSelection();
+              await fetchFiles(0, PAGE_SIZE);
+              onMutateDone?.();
+            } catch (e) {
+              message.error(String(e));
+            }
+          },
         });
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [selectedIds, clearSelection, fetchFiles]);
+  }, [selectedIds, clearSelection, fetchFiles, onMutateDone]);
 
   const handleUpdateDescription = useCallback(async (id: number, description: string) => {
     try {
@@ -279,7 +300,8 @@ export default function LibraryList({ onOpenFile, filter }: { onOpenFile?: (id: 
                            onOk: async () => {
                              try {
                                await invoke('delete_files', { fileIds: [item.id] });
-                               fetchFiles(0, PAGE_SIZE);
+                               await fetchFiles(0, PAGE_SIZE);
+                               onMutateDone?.();
                              } catch (e) {
                                message.error(String(e));
                              }
@@ -372,10 +394,9 @@ function EditableDescriptionCell({
   const [value, setValue] = useState(item.description);
   const [saving, setSaving] = useState(false);
 
-  // External data may change; sync when not actively editing
-  if (!editing && value !== item.description) {
-    setValue(item.description);
-  }
+  useEffect(() => {
+    if (!editing) setValue(item.description);
+  }, [item.description, editing]);
 
   const handleSave = async () => {
     const trimmed = value.slice(0, 500);

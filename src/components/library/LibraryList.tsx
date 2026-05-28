@@ -335,8 +335,16 @@ export default function LibraryList({ onOpenFile, filter, onTotalCountChange, on
                     cursor: 'pointer',
                   }}
                 >
-                  <div style={{ width: 40, flexShrink: 0, textAlign: 'center' }}>
-                    <Checkbox checked={selectedIds.has(item.id)} />
+                  <div
+                    style={{ width: 40, flexShrink: 0, textAlign: 'center' }}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={selectedIds.has(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleSelect(item.id, true)}
+                    />
                   </div>
                   {columns.map(col => (
                     <div
